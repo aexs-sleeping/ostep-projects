@@ -1,0 +1,1 @@
+cd /home/asus/ostep/ostep-projects/concurrency-mapreduce && ./build/wordcount build/test_inputs/empty.txt | sort ; exit ${PIPESTATUS[0]}

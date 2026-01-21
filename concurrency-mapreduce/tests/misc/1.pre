@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+mkdir -p build/test_inputs
+echo -n > build/test_inputs/empty.txt
+make clean
+make

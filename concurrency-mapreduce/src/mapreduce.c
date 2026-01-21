@@ -1,4 +1,4 @@
-#include "include/mapreduce.h"
+#include "mapreduce.h"
 
 #include <pthread.h>
 #include <stddef.h>
@@ -36,7 +36,7 @@ typedef struct
     const char *current_key;
     size_t current_begin;
     size_t current_end;
-    size_t current_pos;
+    size_t current_pos; 
 } MR_Partition;
 
 static MR_Partition *g_partitions = NULL; // 分区数组
@@ -317,6 +317,7 @@ void MR_Emit(char *key, char *value)
  * @param num_reducers reducer 线程数量（同时也是分区数量）。
  * @param partition 分区函数；若为 NULL 则使用 MR_DefaultHashPartition。
  */
+
 void MR_Run(int argc, char *argv[], Mapper map, int num_mappers, Reducer reduce, int num_reducers, Partitioner partition)
 {
     if (argc < 2 || argv == NULL)

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# prepare inputs and build
+mkdir -p build/test_inputs
+cat > build/test_inputs/f1.txt <<'EOF'
+hello world hello
+foo bar
+EOF
+
+cat > build/test_inputs/f2.txt <<'EOF'
+world foo foo baz
+EOF
+
+make clean
+make

@@ -21,10 +21,6 @@ TEST_DIR = test
 MR_SRCS := $(SRC_DIR)/mapreduce.c
 MR_OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(MR_SRCS))
 
-# 可选：单独构建 csapp（如果你需要的话）
-CSAPP_SRCS := $(SRC_DIR)/csapp.c
-CSAPP_OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(CSAPP_SRCS))
-
 # 头文件（对外暴露）
 PUBLIC_HEADERS := $(wildcard $(INCLUDE_DIR)/*.h)
 
@@ -42,11 +38,7 @@ all: $(LIB)
 $(LIB): $(MR_OBJS) | $(BUILD_DIR)
 	ar rcs $@ $(MR_OBJS)
 
-# 可选：生成 csapp 静态库
-$(BUILD_DIR)/libcsapp.a: $(CSAPP_OBJS) | $(BUILD_DIR)
-	ar rcs $@ $(CSAPP_OBJS)
-
-csapp: $(BUILD_DIR)/libcsapp.a
+# (已移除) 可选 csapp 静态库目标 — 源文件已删除
 
 # 编译目标文件
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(PUBLIC_HEADERS) | $(BUILD_DIR)
