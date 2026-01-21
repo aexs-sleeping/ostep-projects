@@ -18,7 +18,7 @@ TEST_DIR = test
 # 源文件和目标文件
 # 说明：csapp 是你自己的外部包装库，不作为 MapReduce 作业的必须部分。
 # 为了避免环境/宏导致 csapp 编译失败，这里默认只构建 mapreduce。
-MR_SRCS := $(SRC_DIR)/mapreduce.c $(SRC_DIR)/threadpool.c
+MR_SRCS := $(SRC_DIR)/mapreduce.c
 MR_OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(MR_SRCS))
 
 # 可选：单独构建 csapp（如果你需要的话）

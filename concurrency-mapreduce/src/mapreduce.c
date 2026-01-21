@@ -1,6 +1,4 @@
-#include "mapreduce.h"
-
-#include "threadpool.h"
+#include "include/mapreduce.h"
 
 #include <pthread.h>
 #include <stddef.h>
@@ -121,6 +119,44 @@ static int kv_key_cmp(const void *a, const void *b)
     return strcmp(ka->key, kb->key);
 }
 
+// =============================
+//  Map 阶段：简单 worker 循环
+// =============================
+
+typedef struct
+{
+    char **files;
+    int num_files;
+    int next_index;
+    pthread_mutex_t lock;
+} MR_MapWork;
+
+static void *mapper_thread(void *arg)
+{
+    MR_MapWork *work = (MR_MapWork *)arg;
+
+    while (1)
+    {
+        char *file = NULL;
+
+        pthread_mutex_lock(&work->lock);
+        if (work->next_index < work->num_files)
+        {
+            file = work->files[work->next_index++];
+        }
+        pthread_mutex_unlock(&work->lock);
+
+        if (file == NULL)
+        {
+            break;
+        }
+
+        g_mapper(file);
+    }
+
+    return NULL;
+}
+
 // Getter：Reduce() 通过它逐个拿到当前 key 的 value。
 // 约定：
 // - Reduce(key, get_next, partition) 被调用后，get_next 只能用于“同一个 key”
@@ -162,15 +198,6 @@ static char *MR_GetNext(char *key, int partition_number)
  * @brief 线程池任务：处理一个输入文件（调用用户 map(file)）。
  * @param arg 文件名（char*）。
  */
-static void mr_map_task(void *arg)
-{
-    char *file = (char *)arg;
-    if (file == NULL) {
-        return;
-    }
-    g_mapper(file); //这里用户会调用 MR_Emit() 然后根据key 获取section区号 然后追加到对应分区
-}
-
 /**
  * @brief Reducer 线程工作函数：处理一个 partition（按 key 升序依次调用 reduce()）。
  *
@@ -344,28 +371,43 @@ void MR_Run(int argc, char *argv[], Mapper map, int num_mappers, Reducer reduce,
         g_partitions[i].current_key = NULL;
     }
 
-    // 1) Map 阶段：使用线程池处理文件任务
+    // 1) Map 阶段：固定 mapper 线程 + while(1) 循环取任务
 
-    // 如果文件数量少于 num_mappers，则线程数按文件数量创建，避免空转。
     int mapper_workers = num_mappers;
-    if (mapper_workers > num_files) {
+    if (mapper_workers > num_files)
+    {
         mapper_workers = num_files;
     }
-    threadpool_t *pool = threadpool_create(mapper_workers);
-    if (pool == NULL) {
-        fprintf(stderr, "MR_Run: threadpool_create failed\n");
+
+    MR_MapWork work = {
+        .files = files,
+        .num_files = num_files,
+        .next_index = 0,
+    };
+    pthread_mutex_init(&work.lock, NULL);
+
+    pthread_t *mthreads = (pthread_t *)malloc((size_t)mapper_workers * sizeof(pthread_t));
+    if (mthreads == NULL)
+    {
+        fprintf(stderr, "MR_Run: out of memory (mthreads)\n");
         exit(1);
     }
 
-    for (int i = 0; i < num_files; i++) {
-        if (threadpool_submit(pool, mr_map_task, files[i]) != 0) {
-            fprintf(stderr, "MR_Run: threadpool_submit failed\n");
+    for (int i = 0; i < mapper_workers; i++)
+    {
+        if (pthread_create(&mthreads[i], NULL, mapper_thread, &work) != 0)
+        {
+            fprintf(stderr, "MR_Run: pthread_create(mapper) failed\n");
             exit(1);
         }
     }
+    for (int i = 0; i < mapper_workers; i++)
+    {
+        pthread_join(mthreads[i], NULL);
+    }
 
-    // destroy 会等待所有任务完成
-    threadpool_destroy(pool);
+    free(mthreads);
+    pthread_mutex_destroy(&work.lock);
 
     //现在每个mapper线程获取完所有文件，并处理存储完毕
     // 2) Map 完成后，对每个 partition(分区) 排序
